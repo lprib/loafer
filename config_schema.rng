@@ -1,0 +1,65 @@
+<!--TODO: ensure names are unique in project-->
+<!--TODO: disallow 'global' as a tag since it's implied -->
+<!--TODO: disallow 'global' as artifact name since it's tag -->
+<!--TODO: allow grouping artifacts to share object files -->
+<grammar xmlns="http://relaxng.org/ns/structure/1.0">
+    <start>
+        <element name="project" xmlns="http://relaxng.org/ns/structure/1.0">
+            <interleave>
+                <element name="outdir">
+                    <text />
+                </element>
+
+                <element name="artifacts">
+                    <zeroOrMore>
+                        <element name="artifact">
+                            <attribute name="name" />
+                            <optional>
+                                <attribute name="tags" />
+                            </optional>
+
+                            <element name="main">
+                                <text />
+                            </element>
+                            <ref name="compilerOptions" />
+                        </element>
+                    </zeroOrMore>
+                </element>
+
+                <element name="tags">
+                    <zeroOrMore>
+                        <element name="tag">
+                            <attribute name="name" />
+
+                            <ref name="compilerOptions" />
+                        </element>
+                    </zeroOrMore>
+                </element>
+            </interleave>
+        </element>
+    </start>
+    <define name="compilerOptions">
+        <interleave>
+            <zeroOrMore>
+                <element name="cflags">
+                    <text />
+                </element>
+            </zeroOrMore>
+            <zeroOrMore>
+                <element name="include">
+                    <text />
+                </element>
+            </zeroOrMore>
+            <zeroOrMore>
+                <element name="link">
+                    <optional>
+                        <attribute name="glob">
+                            <value>true</value>
+                        </attribute>
+                    </optional>
+                    <text />
+                </element>
+            </zeroOrMore>
+        </interleave>
+    </define>
+</grammar>

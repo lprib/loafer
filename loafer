@@ -1,0 +1,88 @@
+#!/usr/bin/python3
+import sys
+import shlex
+import subprocess
+import xml.etree.ElementTree as et
+from pathlib import Path
+
+def parse_compile_config(elem, basepath):
+    config = {}
+    config["cflags"] = []
+    for flags in elem.findall("cflags"):
+        config["cflags"].extend(shlex.split(flags.text))
+
+    config["includes"] = [basepath / e.text for e in elem.findall("include")]
+    config["links"] = []
+    for e in elem.findall("link"):
+        if "glob" in e.attrib:
+            config["links"].extend(basepath.glob(e.text))
+        else:
+            config["links"].append(e.text)
+    return config
+
+def concat_compile_configs(configs):
+    out = {}
+    for key in configs[0].keys():
+        out[key] = []
+        for c in configs:
+            out[key].extend(c[key])
+    return out
+
+class Artifact:
+    def __init__(self, elem, basepath):
+        self.tags = elem.attrib["tags"].split(" ") if "tags" in elem.attrib else []
+        self.main = basepath / elem.findtext("main")
+        self.compiler_config = parse_compile_config(elem, basepath)
+
+def build_target(artifact, artifact_name, tags, project_config):
+    configs = [tags[t] for t in artifact.tags]
+    configs.append(artifact.compiler_config)
+    if "global" in tags:
+        configs.append(tags["global"])
+    
+    config = concat_compile_configs(configs)
+    
+    full_flags = config["cflags"] + ["-I" + str(include) for include in config["includes"]]
+    
+    # create out dir
+    out_dir = project_config["outdir"] / artifact_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    objects = []
+
+    for link in [artifact.main] + config["links"]:
+        object_file = str(out_dir / Path(link).stem) + ".o"
+        objects.append(object_file)
+        args = ["gcc", "-c", str(link), "-o", str(object_file)] + full_flags
+        print(" ".join(args))
+        subprocess.call(args)
+    
+    args = ["gcc", "-o", str(out_dir / artifact_name)] + objects
+    print(" ".join(args))
+    subprocess.call(args)
+        
+
+
+def main():
+    root = et.parse("loafer.xml").getroot()
+    basepath = Path(".")
+
+    tags = {e.attrib["name"]: parse_compile_config(e, basepath) for e in root.find("tags")}
+    artifacts = {e.attrib["name"]: Artifact(e, basepath) for e in root.find("artifacts")}
+
+    project_config = {}
+    project_config["outdir"] = basepath / root.findtext("outdir")
+    
+    for targetname in sys.argv[1:]:
+        if targetname in tags:
+            for name, art in artifacts.items():
+                if targetname in art.tags:
+                    build_target(art, name, tags, project_config)
+        elif targetname in artifacts:
+            build_target(artifacts[targetname], targetname, tags, project_config)
+        else:
+            print(f"Unknown tag or artifact {targetname}", file=sys.stderr)
+    
+
+if __name__ == "__main__":
+    main()
