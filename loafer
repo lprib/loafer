@@ -47,46 +47,49 @@ class Artifact:
 def run_process(process_args, project_config, *args, **kwargs):
     if project_config["verbose"]:
         # In shell mode, we only send a single string, don't try to join it
-        if kwargs["shell"] == True:
+        if kwargs.get("shell") == True:
             print(process_args)
         else:
             print(" ".join(process_args))
-    subprocess.call(process_args, *args, **kwargs)
+    return subprocess.check_call(process_args, *args, **kwargs)
 
 
 def build_target(artifact, artifact_name, tags, project_config):
-    if project_config["verbose"]: print(f"Compiling artifact {artifact_name}")
+    try:
+        if project_config["verbose"]: print(f"Compiling artifact {artifact_name}")
 
-    configs = [tags[t][1] for t in artifact.tags]
-    configs.append(artifact.compiler_config)
-    if "global" in tags:
-        configs.append(tags["global"][1])
-    
-    config = concat_compile_configs(configs)
-    
-    # create out dir
-    out_dir = project_config["outdir"] / artifact_name
-    out_dir.mkdir(parents=True, exist_ok=True)
+        configs = [tags[t][1] for t in artifact.tags]
+        configs.append(artifact.compiler_config)
+        if "global" in tags:
+            configs.append(tags["global"][1])
+        
+        config = concat_compile_configs(configs)
+        
+        # create out dir
+        out_dir = project_config["outdir"] / artifact_name
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-    objects = []
+        objects = []
 
-    full_compile_flags = config["complinkflags"] + config["compflags"] + ["-I" + str(include) for include in config["inc"]]
+        full_compile_flags = config["complinkflags"] + config["compflags"] + ["-I" + str(include) for include in config["inc"]]
 
-    for source in config["main"] + config["src"]:
-        object_file = str(out_dir / Path(source).stem) + ".o"
-        objects.append(object_file)
-        run_process(["gcc", "-c", str(source), "-o", str(object_file)] + full_compile_flags, project_config)
-    
-    if project_config["stage"] <= STAGE_COMPILE: return
-    if project_config["verbose"]: print(f"Linking artifact {artifact_name}")
-    
-    exe_name = str(out_dir / artifact_name)
-    run_process(["gcc", "-o", exe_name] + objects + config["complinkflags"] + config["linkflags"], project_config)
+        for source in config["main"] + config["src"]:
+            object_file = str(out_dir / Path(source).stem) + ".o"
+            objects.append(object_file)
+            run_process(["gcc", "-c", str(source), "-o", str(object_file)] + full_compile_flags, project_config)
+        
+        if project_config["stage"] <= STAGE_COMPILE: return
+        if project_config["verbose"]: print(f"Linking artifact {artifact_name}")
+        
+        exe_name = str(out_dir / artifact_name)
+        run_process(["gcc", "-o", exe_name] + objects + config["complinkflags"] + config["linkflags"], project_config)
 
-    if project_config["stage"] <= STAGE_LINK: return
-    if project_config["verbose"]: print(f"Running artifact {artifact_name}")
-    
-    run_process([exe_name] + config["runflags"], project_config)
+        if project_config["stage"] <= STAGE_LINK: return
+        if project_config["verbose"]: print(f"Running artifact {artifact_name}")
+        
+        run_process([exe_name] + config["runflags"], project_config)
+    except subprocess.CalledProcessError as err:
+        print(f"Process exited with code {err.returncode}")
 
 def construct_lookup_dict(root, collection_elem_name, typ, construct_from_elem):
     return {e.attrib["id"]: (typ, construct_from_elem(e)) for e in root.find(collection_elem_name)}
@@ -125,7 +128,10 @@ def main():
                     if targetname in artifact.tags:
                         build_target(artifact, artifact_name, tags, project_config)
             if typ == TARGET_TYPE_SCRIPT:
-                run_process(obj, project_config, shell=True)
+                try:
+                    run_process(obj, project_config, shell=True)
+                except subprocess.CalledProcessError:
+                    pass
         else:
             print(f"Unknown tag or artifact {targetname}", file=sys.stderr)
 
