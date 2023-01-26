@@ -1,4 +1,7 @@
-<grammar xmlns="http://relaxng.org/ns/structure/1.0">
+<grammar
+    xmlns="http://relaxng.org/ns/structure/1.0"
+    datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"
+>
     <start>
         <element name="project" xmlns="http://relaxng.org/ns/structure/1.0">
             <interleave>
@@ -9,7 +12,7 @@
                 <element name="artifacts">
                     <zeroOrMore>
                         <element name="artifact">
-                            <attribute name="name" />
+                            <ref name="genericTargetAttributes" />
                             <optional>
                                 <attribute name="tags" />
                             </optional>
@@ -22,61 +25,84 @@
                 <element name="tags">
                     <zeroOrMore>
                         <element name="tag">
-                            <attribute name="name" />
-
+                            <ref name="genericTargetAttributes" />
                             <ref name="compilerOptions" />
                         </element>
                     </zeroOrMore>
                 </element>
 
-                <!-- <element name="stages">
-                    <interleave>
-                        <element name="compile">
+                <element name="scripts">
+                    <zeroOrMore>
+                        <element name="script">
+                            <ref name="genericTargetAttributes" />
                             <text />
                         </element>
-                        <element name="link">
-                            <text />
-                        </element>
-                        <element name="run">
-                            <text />
-                        </element>
-                        <zeroOrMore>
-
-                            <element name="custom">
-                                <attribute name="name"></attribute>
-                                <text />
-                            </element>
-                        </zeroOrMore>
-                    </interleave>
-                </element> -->
+                    </zeroOrMore>
+                </element>
             </interleave>
         </element>
     </start>
+
+    <define name="genericTargetAttributes">
+        <attribute name="id">
+            <data type="Name" />
+        </attribute>
+        <optional>
+            <attribute name="default">
+                <value>true</value>
+            </attribute>
+        </optional>
+    </define>
+
+    <define name="compilerSingleOption">
+        <optional>
+            <choice>
+                <attribute name="type">
+                    <choice>
+                        <value>glob</value>
+                        <value>shell</value>
+                    </choice>
+                </attribute>
+            </choice>
+        </optional>
+        <text />
+    </define>
+
     <define name="compilerOptions">
         <interleave>
             <zeroOrMore>
                 <element name="main">
-                    <text />
+                    <ref name="compilerSingleOption" />
                 </element>
             </zeroOrMore>
             <zeroOrMore>
-                <element name="cflags">
-                    <text />
+                <element name="inc">
+                    <ref name="compilerSingleOption" />
                 </element>
             </zeroOrMore>
             <zeroOrMore>
-                <element name="include">
-                    <text />
+                <element name="src">
+                    <ref name="compilerSingleOption" />
                 </element>
             </zeroOrMore>
             <zeroOrMore>
-                <element name="source">
-                    <optional>
-                        <attribute name="glob">
-                            <value>true</value>
-                        </attribute>
-                    </optional>
-                    <text />
+                <element name="compflags">
+                    <ref name="compilerSingleOption" />
+                </element>
+            </zeroOrMore>
+            <zeroOrMore>
+                <element name="linkflags">
+                    <ref name="compilerSingleOption" />
+                </element>
+            </zeroOrMore>
+            <zeroOrMore>
+                <element name="complinkflags">
+                    <ref name="compilerSingleOption" />
+                </element>
+            </zeroOrMore>
+            <zeroOrMore>
+                <element name="runflags">
+                    <ref name="compilerSingleOption" />
                 </element>
             </zeroOrMore>
         </interleave>
