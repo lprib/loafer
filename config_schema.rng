@@ -1,7 +1,3 @@
-<!--TODO: ensure names are unique in project-->
-<!--TODO: disallow 'global' as a tag since it's implied -->
-<!--TODO: disallow 'global' as artifact name since it's tag -->
-<!--TODO: allow grouping artifacts to share object files -->
 <grammar xmlns="http://relaxng.org/ns/structure/1.0">
     <start>
         <element name="project" xmlns="http://relaxng.org/ns/structure/1.0">
@@ -18,9 +14,6 @@
                                 <attribute name="tags" />
                             </optional>
 
-                            <element name="main">
-                                <text />
-                            </element>
                             <ref name="compilerOptions" />
                         </element>
                     </zeroOrMore>
@@ -35,11 +28,37 @@
                         </element>
                     </zeroOrMore>
                 </element>
+
+                <!-- <element name="stages">
+                    <interleave>
+                        <element name="compile">
+                            <text />
+                        </element>
+                        <element name="link">
+                            <text />
+                        </element>
+                        <element name="run">
+                            <text />
+                        </element>
+                        <zeroOrMore>
+
+                            <element name="custom">
+                                <attribute name="name"></attribute>
+                                <text />
+                            </element>
+                        </zeroOrMore>
+                    </interleave>
+                </element> -->
             </interleave>
         </element>
     </start>
     <define name="compilerOptions">
         <interleave>
+            <zeroOrMore>
+                <element name="main">
+                    <text />
+                </element>
+            </zeroOrMore>
             <zeroOrMore>
                 <element name="cflags">
                     <text />
@@ -51,7 +70,7 @@
                 </element>
             </zeroOrMore>
             <zeroOrMore>
-                <element name="link">
+                <element name="source">
                     <optional>
                         <attribute name="glob">
                             <value>true</value>
