@@ -65,7 +65,8 @@ class Artifact(Target):
             
             # create out dir
             out_dir = project.outdir / self.name
-            out_dir.mkdir(parents=True, exist_ok=True)
+            if not project.dry_run:
+                out_dir.mkdir(parents=True, exist_ok=True)
 
             objects = []
 
@@ -114,11 +115,12 @@ class Script(Target):
             pass
 
 class ProjectState:
-    def __init__(self, targets, outdir, stage, verbose):
+    def __init__(self, targets, outdir, stage, verbose, dry_run):
         self.targets = targets
         self.outdir = outdir
         self.stage = stage
         self.verbose = verbose
+        self.dry_run = dry_run
 
 def concat_compile_configs(configs):
     out = {}
@@ -129,16 +131,18 @@ def concat_compile_configs(configs):
     return out
 
 def run_process(process_args, project, *args, **kwargs):
+    # In shell mode, we only send a single string, don't try to join it
+    text = process_args if kwargs.get("shell") else " ".join(process_args)
+    if project.dry_run:
+        print(text)
+        return
+
     if project.verbose:
-        # In shell mode, we only send a single string, don't try to join it
-        if kwargs.get("shell") == True:
-            print("    " + process_args)
-        else:
-            print("    " + " ".join(process_args))
+        print("    " + text)
     return subprocess.check_call(process_args, *args, **kwargs)
 
 def parse_target_of_type(root, collection_name, constructor):
-    return [constructor(e) for e in root.find(collection_name)]
+    return [constructor(e) for e in root.find(collection_name) or []]
 
 def parse_targets(root):
     targets = []
@@ -151,6 +155,7 @@ def main():
     parser = argparse.ArgumentParser(prog="Loafer", description="Simple C build and test system")
     parser.add_argument("targets_to_build", metavar="TARGET", nargs="+")
     parser.add_argument("-v", "--verbose", action="store_true", help="show compile commands")
+    parser.add_argument("-d", "--dry-run", dest="dry_run", action="store_true", help="output commands but do not run them")
     stage_group = parser.add_mutually_exclusive_group()
     stage_group.add_argument("-c", "--compile", action="store_const", const=STAGE_COMPILE, dest='stage', help="run the compile step")
     stage_group.add_argument("-l", "--link", action="store_const", const=STAGE_LINK, dest="stage", help="run the link step")
@@ -160,10 +165,9 @@ def main():
     root = et.parse("loafer.xml").getroot()
 
     targets = parse_targets(root)
-    outdir = Path(root.findtext("outdir"))
+    outdir = Path(root.findtext("outdir", "out"))
     stage = args.stage or STAGE_RUN
-    verbose = args.verbose
-    project = ProjectState(targets, outdir, stage, verbose)
+    project = ProjectState(targets, outdir, stage, args.verbose, args.dry_run)
 
     
     for target in project.targets:

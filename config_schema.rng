@@ -5,42 +5,49 @@
     <start>
         <element name="project" xmlns="http://relaxng.org/ns/structure/1.0">
             <interleave>
-                <element name="outdir">
-                    <text />
-                </element>
+                <optional>
+                    <element name="outdir">
+                        <text />
+                    </element>
+                </optional>
 
-                <element name="artifacts">
-                    <zeroOrMore>
-                        <element name="artifact">
-                            <ref name="genericTargetAttributes" />
-                            <ref name="compilerOptions" />
+                <optional>
+                    <element name="artifacts">
+                        <zeroOrMore>
+                            <element name="artifact">
+                                <ref name="genericTargetAttributes" />
+                                <ref name="compilerOptions" />
 
-                            <optional>
-                                <attribute name="tags" />
-                            </optional>
-                        </element>
-                    </zeroOrMore>
-                </element>
-
-                <element name="tags">
-                    <zeroOrMore>
-                        <element name="tag">
-                            <ref name="genericTargetAttributes" />
-                            <ref name="compilerOptions" />
-                        </element>
-                    </zeroOrMore>
-                </element>
-
-                <element name="scripts">
-                    <zeroOrMore>
-                        <element name="script">
-                            <ref name="genericTargetAttributes" />
-                            <element name="cmd">
-                                <text />
+                                <optional>
+                                    <attribute name="tags" />
+                                </optional>
                             </element>
-                        </element>
-                    </zeroOrMore>
-                </element>
+                        </zeroOrMore>
+                    </element>
+                </optional>
+                <optional>
+                    <element name="tags">
+                        <zeroOrMore>
+                            <element name="tag">
+                                <ref name="genericTargetAttributes" />
+                                <ref name="compilerOptions" />
+                            </element>
+                        </zeroOrMore>
+                    </element>
+                </optional>
+
+                <optional>
+                    <element name="scripts">
+                        <zeroOrMore>
+                            <element name="script">
+                                <ref name="genericTargetAttributes" />
+                                <element name="cmd">
+                                    <text />
+                                </element>
+                            </element>
+                        </zeroOrMore>
+                    </element>
+                </optional>
             </interleave>
         </element>
     </start>
@@ -52,9 +59,7 @@
     </define>
 
     <define name="genericTargetAttributes">
-        <optional>
-            <ref name="idAttribute"></ref>
-        </optional>
+        <ref name="idAttribute"></ref>
         <zeroOrMore>
             <element name="requires">
                 <text />
