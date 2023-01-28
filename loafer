@@ -166,9 +166,8 @@ def main():
 
     targets = parse_targets(root)
     outdir = Path(root.findtext("outdir", "out"))
-    stage = args.stage or STAGE_RUN
+    stage = args.stage if args.stage is not None else STAGE_RUN
     project = ProjectState(targets, outdir, stage, args.verbose, args.dry_run)
-
     
     for target in project.targets:
         if target.name in args.targets_to_build:

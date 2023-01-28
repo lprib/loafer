@@ -1,8 +1,8 @@
 <?xml-model href="/home/liam/programming/loafer/config_schema.rng" type="application/xml"?>
 <project>
     <artifacts>
-        <artifact id="test">
-            <main>test.c</main>
+        <artifact id="foo">
+            <main>foo.c</main>
         </artifact>
     </artifacts>
 </project>
