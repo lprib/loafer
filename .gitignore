@@ -1,2 +1,5 @@
 __pycache__/
 out/
+
+# Used in one of the integration tests
+TheExpectedTestOutputDir/

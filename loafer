@@ -58,8 +58,11 @@ class Artifact(Target):
 
             relevent_configs = [target.compiler_config for target in project.targets if isinstance(target, Tag) and target.name in self.tags]
             relevent_configs.append(self.compiler_config)
-            if "global" in project.targets:
-                relevent_configs.append(project.targets["global"].compiler_config)
+    
+            # TODO this really should be a hash table, not linear search
+            global_tag = next((t for t in project.targets if isinstance(t, Tag) and t.name == "global"), None)
+            if global_tag is not None:
+                relevent_configs.append(global_tag.compiler_config)
             
             config = concat_compile_configs(relevent_configs)
             

@@ -1,0 +1,35 @@
+<?xml-model href="/home/liam/programming/loafer/config_schema.rng" type="application/xml"?>
+<project>
+    <artifacts>
+        <artifact id="art1" tags="appliedToAll">
+            <main>art1.c</main>
+            <compflags>cf1</compflags>
+            <linkflags>lf1</linkflags>
+        </artifact>
+        <artifact id="art2" tags="appliedToAll appliedToArt23">
+            <main>art2.c</main>
+            <compflags>cf2</compflags>
+            <linkflags>lf2</linkflags>
+        </artifact>
+        <artifact id="art3" tags="appliedToAll appliedToArt23">
+            <main>art3.c</main>
+            <compflags>cf3</compflags>
+            <linkflags>lf3</linkflags>
+        </artifact>
+    </artifacts>
+    <tags>
+        <tag id="global">
+            <compflags>cfglobal</compflags>
+            <linkflags>lfglobal</linkflags>
+        </tag>
+        <tag id="appliedToAll">
+            <compflags>cfall</compflags>
+            <linkflags>lfall</linkflags>
+        </tag>
+        <tag id="appliedToArt23">
+            <compflags>cfart23tag</compflags>
+            <linkflags>clart23tag</linkflags>
+            <runflags>runflag2and3</runflags>
+        </tag>
+    </tags>
+</project>

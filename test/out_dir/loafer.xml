@@ -1,0 +1,9 @@
+<?xml-model href="/home/liam/programming/loafer/config_schema.rng" type="application/xml"?>
+<project>
+    <outdir>TheExpectedTestOutputDir</outdir>
+    <artifacts>
+        <artifact id="dummy">
+            <main>dummy.c</main>
+        </artifact>
+    </artifacts>
+</project>
