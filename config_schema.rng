@@ -56,7 +56,7 @@
             <ref name="idAttribute"></ref>
         </optional>
         <zeroOrMore>
-            <element name="prereq">
+            <element name="requires">
                 <text />
             </element>
         </zeroOrMore>
