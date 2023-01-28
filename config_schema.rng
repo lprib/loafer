@@ -13,11 +13,11 @@
                     <zeroOrMore>
                         <element name="artifact">
                             <ref name="genericTargetAttributes" />
+                            <ref name="compilerOptions" />
+
                             <optional>
                                 <attribute name="tags" />
                             </optional>
-
-                            <ref name="compilerOptions" />
                         </element>
                     </zeroOrMore>
                 </element>
@@ -35,7 +35,9 @@
                     <zeroOrMore>
                         <element name="script">
                             <ref name="genericTargetAttributes" />
-                            <text />
+                            <element name="cmd">
+                                <text />
+                            </element>
                         </element>
                     </zeroOrMore>
                 </element>
@@ -43,15 +45,21 @@
         </element>
     </start>
 
-    <define name="genericTargetAttributes">
+    <define name="idAttribute">
         <attribute name="id">
             <data type="Name" />
         </attribute>
+    </define>
+
+    <define name="genericTargetAttributes">
         <optional>
-            <attribute name="default">
-                <value>true</value>
-            </attribute>
+            <ref name="idAttribute"></ref>
         </optional>
+        <zeroOrMore>
+            <element name="prereq">
+                <text />
+            </element>
+        </zeroOrMore>
     </define>
 
     <define name="compilerSingleOption">
