@@ -1,10 +1,10 @@
 import subprocess
 import sys
 
-import test.single_artifact.test
-import test.out_dir.test
-import test.tags.test
+import test.single_artifact
+import test.out_dir
+import test.tags
 
-test.single_artifact.test.run()
-test.out_dir.test.run()
-test.tags.test.run()
+test.single_artifact.run()
+test.out_dir.run()
+test.tags.run()
