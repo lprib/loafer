@@ -6,7 +6,6 @@ import sys
 import xml.etree.ElementTree as et
 from pathlib import Path
 
-
 STAGE_COMPILE = 0
 STAGE_LINK = 1
 STAGE_RUN = 2
@@ -53,45 +52,42 @@ class Artifact(Target):
 
     def build(self, project):
         super().build(project)
-        try:
-            if project.verbose: print(f"Compiling artifact {self.name}")
+        if project.verbose: print(f"compiling artifact {self.name}")
 
-            relevent_configs = [target.compiler_config for target in project.targets if isinstance(target, Tag) and target.name in self.tags]
-            relevent_configs.append(self.compiler_config)
+        relevent_configs = [target.compiler_config for target in project.targets if isinstance(target, Tag) and target.name in self.tags]
+        relevent_configs.append(self.compiler_config)
     
-            # TODO this really should be a hash table, not linear search
-            global_tag = next((t for t in project.targets if isinstance(t, Tag) and t.name == "global"), None)
-            if global_tag is not None:
-                relevent_configs.append(global_tag.compiler_config)
-            
-            config = concat_compile_configs(relevent_configs)
-            
-            # create out dir
-            out_dir = project.outdir / self.name
-            if not project.dry_run:
-                out_dir.mkdir(parents=True, exist_ok=True)
+        # TODO this really should be a hash table, not linear search
+        global_tag = next((t for t in project.targets if isinstance(t, Tag) and t.name == "global"), None)
+        if global_tag is not None:
+            relevent_configs.append(global_tag.compiler_config)
+        
+        config = concat_compile_configs(relevent_configs)
+        
+        # create out dir
+        out_dir = project.outdir / self.name
+        if not project.dry_run:
+            out_dir.mkdir(parents=True, exist_ok=True)
 
-            objects = []
+        objects = []
 
-            full_compile_flags = config["complinkflags"] + config["compflags"] + ["-I" + str(include) for include in config["inc"]]
+        full_compile_flags = config["complinkflags"] + config["compflags"] + ["-I" + str(include) for include in config["inc"]]
 
-            for source in config["main"] + config["src"]:
-                object_file = str(out_dir / Path(source).stem) + ".o"
-                objects.append(object_file)
-                run_process(["gcc", "-c", str(source), "-o", str(object_file)] + full_compile_flags, project)
-            
-            if project.stage <= STAGE_COMPILE: return
-            if project.verbose: print(f"Linking artifact {self.name}")
-            
-            exe_name = str(out_dir / self.name)
-            run_process(["gcc", "-o", exe_name] + objects + config["complinkflags"] + config["linkflags"], project)
+        for source in config["main"] + config["src"]:
+            object_file = str(out_dir / Path(source).stem) + ".o"
+            objects.append(object_file)
+            run_process(["gcc", "-c", str(source), "-o", str(object_file)] + full_compile_flags, project)
+        
+        if project.stage <= STAGE_COMPILE: return
+        if project.verbose: print(f"Linking artifact {self.name}")
+        
+        exe_name = str(out_dir / self.name)
+        run_process(["gcc", "-o", exe_name] + objects + config["complinkflags"] + config["linkflags"], project)
 
-            if project.stage <= STAGE_LINK: return
-            if project.verbose: print(f"Running artifact {self.name}")
-            
-            run_process([exe_name] + config["runflags"], project)
-        except subprocess.CalledProcessError as err:
-            print(f"Process exited with code {err.returncode}")
+        if project.stage <= STAGE_LINK: return
+        if project.verbose: print(f"Running artifact {self.name}")
+        
+        run_process([exe_name] + config["runflags"], project, accept_fail=True)
 
 
 class Tag(Target):
@@ -108,14 +104,12 @@ class Tag(Target):
 class Script(Target):
     def __init__(self, root):
         super().__init__(root)
-        self.cmd = root.findtext("cmd")
+        self.cmds = [e.text for e in root.findall("cmd")]
 
     def build(self, project):
         super().build(project)
-        try:
-            run_process(self.cmd, project, shell=True)
-        except subprocess.CalledProcessError:
-            pass
+        for cmd in self.cmds:
+            run_process(cmd, project, shell=True, accept_fail=True)
 
 class ProjectState:
     def __init__(self, targets, outdir, stage, verbose, dry_run):
@@ -133,7 +127,7 @@ def concat_compile_configs(configs):
             out[key].extend(c[key])
     return out
 
-def run_process(process_args, project, *args, **kwargs):
+def run_process(process_args, project, accept_fail=False, *args, **kwargs):
     # In shell mode, we only send a single string, don't try to join it
     text = process_args if kwargs.get("shell") else " ".join(process_args)
     if project.dry_run:
@@ -142,7 +136,15 @@ def run_process(process_args, project, *args, **kwargs):
 
     if project.verbose:
         print("    " + text)
-    return subprocess.check_call(process_args, *args, **kwargs)
+    
+    try:
+        return subprocess.check_call(process_args, *args, **kwargs)
+    except subprocess.CalledProcessError as err:
+        if accept_fail:
+            pass
+        else:
+            print(f"Process exited with code {err.returncode}", file=sys.stderr)
+            sys.exit(1)
 
 def parse_target_of_type(root, collection_name, constructor):
     return [constructor(e) for e in root.find(collection_name) or []]

@@ -41,9 +41,11 @@
                         <zeroOrMore>
                             <element name="script">
                                 <ref name="genericTargetAttributes" />
-                                <element name="cmd">
-                                    <text />
-                                </element>
+                                <oneOrMore>
+                                    <element name="cmd">
+                                        <text />
+                                    </element>
+                                </oneOrMore>
                             </element>
                         </zeroOrMore>
                     </element>

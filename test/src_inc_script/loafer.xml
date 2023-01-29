@@ -1,0 +1,36 @@
+<?xml-model href="/home/liam/programming/loafer/config_schema.rng" type="application/xml"?>
+<!-- TODO: integration test that uses as many features as possible -->
+
+<!--
+prereqs/requires
+scripts
+globbing (include paths)
+-->
+<project>
+    <artifacts>
+        <artifact id="main1" tags="uses_mylib_sources">
+            <main>main1.c</main>
+        </artifact>
+        <artifact id="main2">
+            <main>main2.c</main>
+            <src>mylib/src/lib1.c</src>
+            <src>mylib/src/lib2.c</src>
+        </artifact>
+    </artifacts>
+    <tags>
+        <tag id="global">
+            <inc>mylib/inc</inc>
+        </tag>
+
+        <tag id="uses_mylib_sources">
+            <src type="glob">mylib/src/*.c</src>
+        </tag>
+    </tags>
+    <scripts>
+        <script id="prereq_main1_add1">
+            <requires>main1</requires>
+
+            <cmd>./out/main1/main1; echo $(( $? + 1 ))</cmd>
+        </script>
+    </scripts>
+</project>
