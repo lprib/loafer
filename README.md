@@ -7,7 +7,7 @@
 - [ ] Disallow 'global' as artifact name since it's tag
 - [ ] Allow grouping artifacts to share object files
 - [ ] Allow specifying custom build steps other than compile / link / run
-- [ ] Allow custom compile calls?
+- [x] Allow custom compile calls? (cc & ld)
 - [x] Allow LDFLAGS and CFLAGS?
 - [ ] Document config schema
 - [x] Proper command line args (verbose, which steps to run)

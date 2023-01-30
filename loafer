@@ -6,16 +6,28 @@ import sys
 import xml.etree.ElementTree as et
 from pathlib import Path
 
-STAGE_COMPILE = 0
-STAGE_LINK = 1
-STAGE_RUN = 2
+DEFAULT_OUT_DIR = "out"
+DEFAULT_CC = "gcc"
+DEFAULT_LD = "gcc"
 
-COMPILER_OPTION_NAMES = ["main", "inc", "src", "compflags", "linkflags", "complinkflags", "runflags", "cc"]
+
+COMPILER_OPTION_NAMES = {
+    "main": {"single": True},
+    "inc": {"single": False},
+    "src": {"single": False},
+    "compflags": {"single": False},
+    "linkflags": {"single": False},
+    "complinkflags": {"single": False},
+    "runflags": {"single": False},
+    "cc": {"single": True},
+    "ld": {"single": True}
+}
+
 
 class Target:
-    TARGET_TYPE_ARTIFACT = 0
-    TARGET_TYPE_TAG = 1
-    TARGET_TYPE_SCRIPT = 2
+    STAGE_COMPILE = 0
+    STAGE_LINK = 1
+    STAGE_RUN = 2
 
     def __init__(self, root):
         # parse target-generic parameters
@@ -23,26 +35,29 @@ class Target:
         self.prereqs = [e.text for e in root.findall("requires")]
 
     def parse_compile_config(self, elem):
-        config = {x: [] for x in COMPILER_OPTION_NAMES}
+        config = {x: [] for x in COMPILER_OPTION_NAMES.keys()}
 
-        for option_name in COMPILER_OPTION_NAMES:
+        for option_name in COMPILER_OPTION_NAMES.keys():
             option_elems = elem.findall(option_name)
             for option_elem in option_elems:
                 typ = option_elem.attrib.get("type")
                 if typ == "glob":
-                    config[option_name].extend(map(str, Path(".").glob(option_elem.text)))
+                    config[option_name].extend(
+                        map(str, Path(".").glob(option_elem.text)))
                 elif typ == "shell":
                     config[option_name].extend(shlex.split(option_elem.text))
                 else:
-                    config[option_name].extend(option_elem.text.split())
+                    config[option_name].extend((option_elem.text or "").split())
         self.compiler_config = config
-    
+
     def build(self, project):
         for target in project.targets:
             if target.name in self.prereqs:
                 if project.verbose:
-                    print(f"Building {target.name} as a prerequisite for {self.name}")
+                    print(
+                        f"Building {target.name} as a prerequisite for {self.name}")
                 target.build(project)
+
 
 class Artifact(Target):
     def __init__(self, root):
@@ -52,41 +67,56 @@ class Artifact(Target):
 
     def build(self, project):
         super().build(project)
-        if project.verbose: print(f"compiling artifact {self.name}")
+        if project.verbose:
+            print(f"compiling artifact {self.name}")
 
-        relevent_configs = [target.compiler_config for target in project.targets if isinstance(target, Tag) and target.name in self.tags]
+        relevent_configs = [target.compiler_config for target in project.targets if isinstance(
+            target, Tag) and target.name in self.tags]
         relevent_configs.append(self.compiler_config)
-    
+
         # TODO this really should be a hash table, not linear search
-        global_tag = next((t for t in project.targets if isinstance(t, Tag) and t.name == "global"), None)
+        global_tag = next((t for t in project.targets
+                           if isinstance(t, Tag) and t.name == "global"), None)
         if global_tag is not None:
             relevent_configs.append(global_tag.compiler_config)
-        
+
         config = concat_compile_configs(relevent_configs)
-        
+
         # create out dir
         out_dir = project.outdir / self.name
         if not project.dry_run:
             out_dir.mkdir(parents=True, exist_ok=True)
 
+        cc = config.get("cc")
+        cc = cc[0] if len(cc) > 0 else DEFAULT_CC
+        ld = config.get("ld")
+        ld = ld[0] if len(ld) > 0 else DEFAULT_LD
+
         objects = []
 
-        full_compile_flags = config["complinkflags"] + config["compflags"] + ["-I" + str(include) for include in config["inc"]]
+        full_compile_flags = config["complinkflags"] + config["compflags"] + [
+            "-I" + str(include) for include in config["inc"]]
 
         for source in config["main"] + config["src"]:
             object_file = str(out_dir / Path(source).stem) + ".o"
             objects.append(object_file)
-            run_process(["gcc", "-c", str(source), "-o", str(object_file)] + full_compile_flags, project)
-        
-        if project.stage <= STAGE_COMPILE: return
-        if project.verbose: print(f"Linking artifact {self.name}")
-        
-        exe_name = str(out_dir / self.name)
-        run_process(["gcc", "-o", exe_name] + objects + config["complinkflags"] + config["linkflags"], project)
+            run_process([cc, "-c", str(source), "-o",
+                        str(object_file)] + full_compile_flags, project)
 
-        if project.stage <= STAGE_LINK: return
-        if project.verbose: print(f"Running artifact {self.name}")
-        
+        if project.stage <= Target.STAGE_COMPILE:
+            return
+        if project.verbose:
+            print(f"Linking artifact {self.name}")
+
+        exe_name = str(out_dir / self.name)
+        run_process([ld, "-o", exe_name] + objects +
+                    config["complinkflags"] + config["linkflags"], project)
+
+        if project.stage <= Target.STAGE_LINK:
+            return
+        if project.verbose:
+            print(f"Running artifact {self.name}")
+
         run_process([exe_name] + config["runflags"], project, accept_fail=True)
 
 
@@ -97,9 +127,11 @@ class Tag(Target):
 
     def build(self, project):
         super().build(project)
-        artifacts = [artifact for artifact in project.targets if isinstance(artifact, Artifact) and self.name in artifact.tags]
+        artifacts = [artifact for artifact in project.targets if isinstance(
+            artifact, Artifact) and self.name in artifact.tags]
         for artifact in artifacts:
             artifact.build(project)
+
 
 class Script(Target):
     def __init__(self, root):
@@ -111,6 +143,7 @@ class Script(Target):
         for cmd in self.cmds:
             run_process(cmd, project, shell=True, accept_fail=True)
 
+
 class ProjectState:
     def __init__(self, targets, outdir, stage, verbose, dry_run):
         self.targets = targets
@@ -119,13 +152,18 @@ class ProjectState:
         self.verbose = verbose
         self.dry_run = dry_run
 
+
 def concat_compile_configs(configs):
     out = {}
     for key in configs[0].keys():
         out[key] = []
         for c in configs:
             out[key].extend(c[key])
+        if COMPILER_OPTION_NAMES[key]["single"] and len(out[key]) > 1:
+            print(f"Multiple definitions of {key} tag not allowed", file=sys.stderr)
+            sys.exit(1)
     return out
+
 
 def run_process(process_args, project, accept_fail=False, *args, **kwargs):
     # In shell mode, we only send a single string, don't try to join it
@@ -136,47 +174,59 @@ def run_process(process_args, project, accept_fail=False, *args, **kwargs):
 
     if project.verbose:
         print("    " + text)
-    
+
     try:
         return subprocess.check_call(process_args, *args, **kwargs)
     except subprocess.CalledProcessError as err:
         if accept_fail:
             pass
         else:
-            print(f"Process exited with code {err.returncode}", file=sys.stderr)
+            print(
+                f"Process exited with code {err.returncode}", file=sys.stderr)
             sys.exit(1)
+
 
 def parse_target_of_type(root, collection_name, constructor):
     return [constructor(e) for e in root.find(collection_name) or []]
 
+
 def parse_targets(root):
     targets = []
     targets.extend(parse_target_of_type(root, "tags", lambda e: Tag(e)))
-    targets.extend(parse_target_of_type(root, "artifacts", lambda e: Artifact(e)))
+    targets.extend(parse_target_of_type(
+        root, "artifacts", lambda e: Artifact(e)))
     targets.extend(parse_target_of_type(root, "scripts", lambda e: Script(e)))
     return targets
 
+
 def main():
-    parser = argparse.ArgumentParser(prog="Loafer", description="Simple C build and test system")
+    parser = argparse.ArgumentParser(
+        prog="Loafer", description="Simple C build and test system")
     parser.add_argument("targets_to_build", metavar="TARGET", nargs="+")
-    parser.add_argument("-v", "--verbose", action="store_true", help="show compile commands")
-    parser.add_argument("-d", "--dry-run", dest="dry_run", action="store_true", help="output commands but do not run them")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="show compile commands")
+    parser.add_argument("-d", "--dry-run", dest="dry_run",
+                        action="store_true", help="output commands but do not run them")
     stage_group = parser.add_mutually_exclusive_group()
-    stage_group.add_argument("-c", "--compile", action="store_const", const=STAGE_COMPILE, dest='stage', help="run the compile step")
-    stage_group.add_argument("-l", "--link", action="store_const", const=STAGE_LINK, dest="stage", help="run the link step")
-    stage_group.add_argument("-r", "--run", action="store_const", const=STAGE_RUN, dest="stage", help="run target after linking")
+    stage_group.add_argument("-c", "--compile", action="store_const",
+                             const=Target.STAGE_COMPILE, dest='stage', help="run the compile step")
+    stage_group.add_argument("-l", "--link", action="store_const",
+                             const=Target.STAGE_LINK, dest="stage", help="run the link step")
+    stage_group.add_argument("-r", "--run", action="store_const",
+                             const=Target.STAGE_RUN, dest="stage", help="run target after linking")
     args = parser.parse_args()
 
     root = et.parse("loafer.xml").getroot()
 
     targets = parse_targets(root)
-    outdir = Path(root.findtext("outdir", "out"))
-    stage = args.stage if args.stage is not None else STAGE_RUN
+    outdir = Path(root.findtext("outdir", DEFAULT_OUT_DIR))
+    stage = args.stage if args.stage is not None else Target.STAGE_RUN
     project = ProjectState(targets, outdir, stage, args.verbose, args.dry_run)
-    
+
     for target in project.targets:
         if target.name in args.targets_to_build:
             target.build(project)
+
 
 if __name__ == "__main__":
     main()
