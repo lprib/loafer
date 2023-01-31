@@ -1,0 +1,8 @@
+<?xml-model href="/home/liam/programming/loafer/config_schema.rng" type="application/xml"?>
+<project>
+    <scripts>
+        <script id="foo">
+            <cmd>echo -n foo</cmd>
+        </script>
+    </scripts>
+</project>

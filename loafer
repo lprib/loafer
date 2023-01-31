@@ -9,6 +9,7 @@ from pathlib import Path
 DEFAULT_OUT_DIR = "out"
 DEFAULT_CC = "gcc"
 DEFAULT_LD = "gcc"
+DEFAULT_CONFIG_FILE = "loafer.xml"
 
 
 COMPILER_OPTION_NAMES = {
@@ -76,8 +77,9 @@ class Artifact(TaggableTarget):
         if project.verbose:
             print(f"compiling artifact {self.name}")
 
-        relevent_configs = [target.compiler_config for target in project.targets if isinstance(
-            target, Tag) and target.name in self.tags]
+        relevent_configs = [target.compiler_config for target in project.targets
+                            if isinstance(target, Tag)
+                            and target.name in self.tags]
         relevent_configs.append(self.compiler_config)
 
         # TODO this really should be a hash table, not linear search
@@ -194,16 +196,16 @@ def run_process(process_args, project, accept_fail=False, *args, **kwargs):
             sys.exit(1)
 
 
-def parse_target_of_type(root, collection_name, constructor):
+def parse_targets_of_type(root, collection_name, constructor):
     return [constructor(e) for e in root.find(collection_name) or []]
 
 
 def parse_targets(root):
     targets = []
-    targets.extend(parse_target_of_type(root, "tags", lambda e: Tag(e)))
-    targets.extend(parse_target_of_type(
+    targets.extend(parse_targets_of_type(root, "tags", lambda e: Tag(e)))
+    targets.extend(parse_targets_of_type(
         root, "artifacts", lambda e: Artifact(e)))
-    targets.extend(parse_target_of_type(root, "scripts", lambda e: Script(e)))
+    targets.extend(parse_targets_of_type(root, "scripts", lambda e: Script(e)))
     return targets
 
 
@@ -215,6 +217,9 @@ def main():
                         help="show compile commands")
     parser.add_argument("-d", "--dry-run", dest="dry_run",
                         action="store_true", help="output commands but do not run them")
+    parser.add_argument("-C", "--config", dest="config_file",
+                        default=DEFAULT_CONFIG_FILE, help="Configuration file to parse targets from")
+
     stage_group = parser.add_mutually_exclusive_group()
     stage_group.add_argument("-c", "--compile", action="store_const",
                              const=Target.STAGE_COMPILE, dest='stage', help="run the compile step")
@@ -224,7 +229,7 @@ def main():
                              const=Target.STAGE_RUN, dest="stage", help="run target after linking")
     args = parser.parse_args()
 
-    root = et.parse("loafer.xml").getroot()
+    root = et.parse(args.config_file).getroot()
 
     targets = parse_targets(root)
     outdir = Path(root.findtext("outdir", DEFAULT_OUT_DIR))
