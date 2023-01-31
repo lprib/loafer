@@ -16,11 +16,8 @@
                         <zeroOrMore>
                             <element name="artifact">
                                 <ref name="genericTargetAttributes" />
+                                <ref name="taggableTargetAttributes"/>
                                 <ref name="compilerOptions" />
-
-                                <optional>
-                                    <attribute name="tags" />
-                                </optional>
                             </element>
                         </zeroOrMore>
                     </element>
@@ -41,6 +38,7 @@
                         <zeroOrMore>
                             <element name="script">
                                 <ref name="genericTargetAttributes" />
+                                <ref name="taggableTargetAttributes"/>
                                 <oneOrMore>
                                     <element name="cmd">
                                         <text />
@@ -67,6 +65,12 @@
                 <text />
             </element>
         </zeroOrMore>
+    </define>
+    
+    <define name="taggableTargetAttributes">
+        <optional>
+            <attribute name="tags" />
+        </optional>
     </define>
 
     <define name="compilerSingleOption">

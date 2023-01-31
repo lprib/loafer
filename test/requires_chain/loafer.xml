@@ -1,0 +1,38 @@
+<?xml-model href="/home/liam/programming/loafer/config_schema.rng" type="application/xml"?>
+<project>
+    <scripts>
+        <script id="a" tags="abcd_tag">
+            <cmd>echo -n a</cmd>
+        </script>
+        <script id="b" tags="abcd_tag">
+            <cmd>echo -n b</cmd>
+        </script>
+        <script id="c" tags="abcd_tag">
+            <cmd>echo -n c</cmd>
+        </script>
+        <script id="d" tags="abcd_tag">
+            <cmd>echo -n d</cmd>
+        </script>
+
+        <script id="reqs_abcd">
+            <requires>abcd_tag</requires>
+            <cmd>echo -n reqs_abcd</cmd>
+        </script>
+
+        <script id="ra">
+            <cmd>echo -n ra</cmd>
+        </script>
+        <script id="rb">
+            <requires>ra</requires>
+            <cmd>echo -n rb</cmd>
+        </script>
+        <script id="rc">
+            <requires>rb</requires>
+            <cmd>echo -n rc</cmd>
+        </script>
+    </scripts>
+
+    <tags>
+        <tag id="abcd_tag" />
+    </tags>
+</project>

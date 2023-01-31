@@ -47,7 +47,8 @@ class Target:
                 elif typ == "shell":
                     config[option_name].extend(shlex.split(option_elem.text))
                 else:
-                    config[option_name].extend((option_elem.text or "").split())
+                    config[option_name].extend(
+                        (option_elem.text or "").split())
         self.compiler_config = config
 
     def build(self, project):
@@ -59,11 +60,16 @@ class Target:
                 target.build(project)
 
 
-class Artifact(Target):
+class TaggableTarget(Target):
+    def __init__(self, root):
+        super().__init__(root)
+        self.tags = [tag for tag in root.attrib.get("tags", "").split()]
+
+
+class Artifact(TaggableTarget):
     def __init__(self, root):
         super().__init__(root)
         self.parse_compile_config(root)
-        self.tags = [tag for tag in root.attrib.get("tags", "").split()]
 
     def build(self, project):
         super().build(project)
@@ -120,20 +126,7 @@ class Artifact(Target):
         run_process([exe_name] + config["runflags"], project, accept_fail=True)
 
 
-class Tag(Target):
-    def __init__(self, root):
-        super().__init__(root)
-        self.parse_compile_config(root)
-
-    def build(self, project):
-        super().build(project)
-        artifacts = [artifact for artifact in project.targets if isinstance(
-            artifact, Artifact) and self.name in artifact.tags]
-        for artifact in artifacts:
-            artifact.build(project)
-
-
-class Script(Target):
+class Script(TaggableTarget):
     def __init__(self, root):
         super().__init__(root)
         self.cmds = [e.text for e in root.findall("cmd")]
@@ -142,6 +135,20 @@ class Script(Target):
         super().build(project)
         for cmd in self.cmds:
             run_process(cmd, project, shell=True, accept_fail=True)
+
+
+class Tag(Target):
+    def __init__(self, root):
+        super().__init__(root)
+        self.parse_compile_config(root)
+
+    def build(self, project):
+        super().build(project)
+        relevant_targets = [target for target in project.targets
+                            if isinstance(target, TaggableTarget)
+                            and self.name in target.tags]
+        for target in relevant_targets:
+            target.build(project)
 
 
 class ProjectState:
@@ -160,7 +167,8 @@ def concat_compile_configs(configs):
         for c in configs:
             out[key].extend(c[key])
         if COMPILER_OPTION_NAMES[key]["single"] and len(out[key]) > 1:
-            print(f"Multiple definitions of {key} tag not allowed", file=sys.stderr)
+            print(
+                f"Multiple definitions of {key} tag not allowed", file=sys.stderr)
             sys.exit(1)
     return out
 
