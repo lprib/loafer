@@ -1,4 +1,4 @@
-import subprocess, sys, os, pathlib
+import subprocess, os
 
 def cd(path):
     os.chdir(path.resolve())
